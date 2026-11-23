@@ -4,9 +4,12 @@
   "version": "0.1.0",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "backend"
   ],
   "scripts": {
+    "dev:backend": "npm run dev -w @smart-barber/backend",
+    "test:backend": "npm run test -w @smart-barber/backend",
     "dev:admin": "npm run dev -w @smart-barber/deployment-manager",
     "dev:merchant": "npm run dev -w @smart-barber/merchant-app",
     "dev:customer": "npm run dev -w @smart-barber/customer-app",
