@@ -17,6 +17,16 @@ export class ApiController {
   async authenticate(req) { return this.identityProvider.authenticate(req); }
 
   async listTenants(req, res) { this.success(res, await this.marketplace.listTenants(), "Businesses retrieved successfully"); }
+  async myProfile(req, res) {
+    const identity = await this.authenticate(req);
+    this.success(res, {
+      id: identity.id,
+      displayName: identity.displayName,
+      email: identity.email ?? null,
+      phone: identity.phone ?? null,
+      memberships: identity.memberships ?? []
+    }, "Profile retrieved successfully");
+  }
   async getTenant(req, res, params) { this.success(res, await this.marketplace.getTenant(params.tenantId)); }
   async listServices(req, res, params) { this.success(res, await this.marketplace.listServices(params.tenantId)); }
   async listStaff(req, res, params) { this.success(res, await this.marketplace.listStaff(params.tenantId)); }
@@ -42,9 +52,11 @@ export class ApiController {
     this.success(res, await this.appointments.listMyAppointments(identity));
   }
 
-  async merchantAppointments(req, res) {
+  async merchantAppointments(req, res, query = {}) {
     const identity = await this.authenticate(req);
-    const tenantId = identity.tenantId;
+    const tenantId = identity.provider === "supabase"
+      ? (query.tenantId || identity.tenantId)
+      : identity.tenantId;
     this.success(res, await this.appointments.listMerchantAppointments(identity, tenantId));
   }
 
@@ -55,15 +67,21 @@ export class ApiController {
     this.success(res, appointment, "Appointment updated successfully");
   }
 
-  async accept(req, res, params) { await this.merchantTransition(req, res, params, null, AppointmentStatus.CONFIRMED); }
-  async decline(req, res, params) { await this.merchantTransition(req, res, params, null, AppointmentStatus.DECLINED); }
-  async start(req, res, params) { await this.merchantTransition(req, res, params, null, AppointmentStatus.IN_PROGRESS); }
-  async complete(req, res, params) { await this.merchantTransition(req, res, params, null, AppointmentStatus.COMPLETED); }
-  async noShow(req, res, params) { await this.merchantTransition(req, res, params, null, AppointmentStatus.NO_SHOW); }
+  async accept(req, res, params, tenantId) { await this.merchantTransition(req, res, params, tenantId, AppointmentStatus.CONFIRMED); }
+  async decline(req, res, params, tenantId) { await this.merchantTransition(req, res, params, tenantId, AppointmentStatus.DECLINED); }
+  async start(req, res, params, tenantId) { await this.merchantTransition(req, res, params, tenantId, AppointmentStatus.IN_PROGRESS); }
+  async complete(req, res, params, tenantId) { await this.merchantTransition(req, res, params, tenantId, AppointmentStatus.COMPLETED); }
+  async noShow(req, res, params, tenantId) { await this.merchantTransition(req, res, params, tenantId, AppointmentStatus.NO_SHOW); }
 
   async cancel(req, res, params) {
     const identity = await this.authenticate(req);
     const appointment = await this.appointments.cancelAppointment(identity, params.appointmentId);
     this.success(res, appointment, "Appointment cancelled successfully");
+  }
+
+  async reschedule(req, res, params, body) {
+    const identity = await this.authenticate(req);
+    const appointment = await this.appointments.rescheduleAppointment(identity, params.appointmentId, body?.startAt);
+    this.success(res, appointment, "Appointment rescheduled successfully");
   }
 }

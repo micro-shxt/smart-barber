@@ -6,6 +6,7 @@ import { InMemoryRepository } from "../../src/repositories/memory/inMemoryReposi
 import { AppointmentService } from "../../src/services/AppointmentService.js";
 import { AvailabilityService } from "../../src/services/AvailabilityService.js";
 import { strictDateKey } from "../../src/utils/time.js";
+import { SupabaseIdentityProvider } from "../../src/middleware/auth.js";
 
 test("accepts a pending to confirmed transition", () => {
   assert.doesNotThrow(() => assertValidTransition(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED));

@@ -64,15 +64,15 @@ export class AppointmentService {
       priceSnapshot: service.price,
       durationSnapshot: service.durationMinutes,
       customerNotes: typeof input.customerNotes === "string" ? input.customerNotes.trim().slice(0, 1000) : ""
-    });
+    }, { accessToken: identity.accessToken });
   }
 
   async listMyAppointments(identity) {
-    return this.repository.listAppointmentsByCustomer(identity.id);
+    return this.repository.listAppointmentsByCustomer(identity.id, { accessToken: identity.accessToken });
   }
 
   async assertMerchant(identity, tenantId) {
-    const membership = await this.repository.findMembership(identity.id, tenantId);
+    const membership = await this.repository.findMembership(identity.id, tenantId, { accessToken: identity.accessToken });
     if (!membership || membership.membershipStatus !== MembershipStatus.ACTIVE) {
       throw errors.forbidden("User is not an active member of this tenant");
     }
@@ -81,25 +81,35 @@ export class AppointmentService {
 
   async listMerchantAppointments(identity, tenantId) {
     await this.assertMerchant(identity, tenantId);
-    return this.repository.listAppointmentsByTenant(tenantId);
+    return this.repository.listAppointmentsByTenant(tenantId, { accessToken: identity.accessToken });
   }
 
   async merchantTransition(identity, tenantId, appointmentId, nextStatus) {
     await this.assertMerchant(identity, tenantId);
-    const appointment = await this.repository.findAppointmentById(appointmentId);
+    const appointment = await this.repository.findAppointmentById(appointmentId, { accessToken: identity.accessToken });
     if (!appointment) throw errors.notFound("Appointment not found");
     if (appointment.tenantId !== tenantId) throw errors.forbidden("Appointment belongs to another tenant");
     assertValidTransition(appointment.status, nextStatus);
     appointment.status = nextStatus;
-    return this.repository.saveAppointment(appointment);
+    return this.repository.saveAppointment(appointment, { accessToken: identity.accessToken });
   }
 
   async cancelAppointment(identity, appointmentId) {
-    const appointment = await this.repository.findAppointmentById(appointmentId);
+    const appointment = await this.repository.findAppointmentById(appointmentId, { accessToken: identity.accessToken });
     if (!appointment) throw errors.notFound("Appointment not found");
     if (appointment.customerId !== identity.id) throw errors.forbidden("Cannot cancel another customer's appointment");
     assertValidTransition(appointment.status, AppointmentStatus.CANCELLED);
     appointment.status = AppointmentStatus.CANCELLED;
-    return this.repository.saveAppointment(appointment);
+    return this.repository.saveAppointment(appointment, { accessToken: identity.accessToken });
+  }
+
+  async rescheduleAppointment(identity, appointmentId, startAt) {
+    const appointment = await this.repository.findAppointmentById(appointmentId, { accessToken: identity.accessToken });
+    if (!appointment) throw errors.notFound("Appointment not found");
+    if (appointment.customerId !== identity.id) throw errors.forbidden("Cannot reschedule another customer's appointment");
+    const start = new Date(startAt);
+    if (Number.isNaN(start.getTime()) || start.getTime() <= Date.now()) throw errors.conflict("Rescheduled start time must be in the future");
+    const end = new Date(start.getTime() + appointment.durationSnapshot * 60000);
+    return this.repository.rescheduleAppointment(appointmentId, start.toISOString(), end.toISOString(), { accessToken: identity.accessToken });
   }
 }

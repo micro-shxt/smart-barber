@@ -1,5 +1,5 @@
 /**
- * Repository contract for future D1 implementations.
+ * Repository contract for memory, Supabase and future implementations.
  * Implementations must return domain-shaped plain objects.
  */
 export class RepositoryInterface {
@@ -22,4 +22,9 @@ export class RepositoryInterface {
    */
   async createAppointmentAtomically() { throw new Error("Repository method not implemented"); }
   async saveAppointment() { throw new Error("Repository method not implemented"); }
+  async getOperatingHours() { throw new Error("Repository method not implemented"); }
+  async getStaffHours() { throw new Error("Repository method not implemented"); }
+  async listTimeOff() { throw new Error("Repository method not implemented"); }
+  async listAppointmentsByStaff() { throw new Error("Repository method not implemented"); }
+  async rescheduleAppointment() { throw new Error("Repository method not implemented"); }
 }

@@ -17,9 +17,15 @@ Error:
 ## Development authentication
 
 Send `x-user-id` to authenticated endpoints. Merchant endpoints additionally send `x-tenant-id`.
+These headers are for the explicitly enabled local development identity provider only; production clients must not send them.
+
+## Production authentication
+
+Send a Supabase access token in the `Authorization: Bearer <token>` header for protected endpoints. The API verifies the token and derives profile and tenant membership from the database. `GET /me/profile` returns the authenticated profile and active memberships.
 
 | Method | Endpoint | Purpose |
 |---|---|---|
+| GET | `/me/profile` | Retrieve the authenticated profile and active business memberships |
 | GET | `/marketplace/tenants` | List businesses |
 | GET | `/marketplace/tenants/:tenantId` | Retrieve business |
 | GET | `/marketplace/tenants/:tenantId/services` | List services |

@@ -10,19 +10,27 @@ export class ApiError extends Error {
 const baseUrl = import.meta.env?.VITE_API_BASE_URL || "http://localhost:3001";
 const apiPrefix = "/api/v1";
 
-export function createApiClient({ headers = {}, onLoading = () => {} } = {}) {
+export function createApiClient({ headers = {}, getAccessToken, onUnauthorized = () => {}, onLoading = () => {} } = {}) {
   let loading = false;
 
   async function request(method, path, { body, headers: requestHeaders } = {}) {
     loading = true;
     onLoading(loading);
     try {
+      let accessToken;
+      try {
+        accessToken = await getAccessToken?.();
+      } catch (error) {
+        onUnauthorized();
+        throw new ApiError(error?.message || "Your session has expired. Please sign in again.", 401, "AUTH_REFRESH_FAILED");
+      }
       const response = await fetch(`${baseUrl}${apiPrefix}${path}`, {
         method,
         headers: {
           "Content-Type": "application/json",
           ...headers,
-          ...requestHeaders
+          ...requestHeaders,
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
         },
         body: body === undefined ? undefined : JSON.stringify(body)
       });
@@ -33,6 +41,7 @@ export function createApiClient({ headers = {}, onLoading = () => {} } = {}) {
         throw new ApiError("The server returned an invalid response", response.status, "INVALID_RESPONSE");
       }
       if (!response.ok) {
+        if (response.status === 401) onUnauthorized();
         throw new ApiError(payload?.error?.message || "The request failed", response.status, payload?.error?.code);
       }
       return payload.data;

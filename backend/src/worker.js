@@ -34,8 +34,12 @@ export function createWorkerFetch(createApplication) {
       port: 3001,
       timezone: "Africa/Johannesburg",
       currency: "ZAR",
+      environment: env.NODE_ENV || "development",
       mockAuthEnabled: env.MOCK_AUTH_ENABLED !== "false",
       identityProviderType: env.IDENTITY_PROVIDER_TYPE || "development-mock",
+      supabaseUrl: env.SUPABASE_URL || "",
+      supabaseAnonKey: env.SUPABASE_ANON_KEY || "",
+      repositoryType: env.REPOSITORY_TYPE || "memory",
       allowedOrigins: (env.CORS_ALLOWED_ORIGINS || "*").split(",").map((value) => value.trim()).filter(Boolean),
       maxRequestBodyBytes: Number(env.MAX_REQUEST_BODY_BYTES || 1048576)
     };

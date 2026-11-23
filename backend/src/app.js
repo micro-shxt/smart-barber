@@ -1,6 +1,7 @@
 import { loadConfig } from "./config/index.js";
 import { InMemoryRepository } from "./repositories/memory/inMemoryRepository.js";
-import { MockIdentityProvider } from "./middleware/auth.js";
+import { SupabaseRepository } from "./repositories/supabase/supabaseRepository.js";
+import { MockIdentityProvider, SupabaseIdentityProvider } from "./middleware/auth.js";
 import { sendError } from "./middleware/errors.js";
 import { MarketplaceService } from "./services/MarketplaceService.js";
 import { AvailabilityService } from "./services/AvailabilityService.js";
@@ -12,11 +13,34 @@ import { errors } from "./domain/errors/domainErrors.js";
 
 export function createApplication(options = {}) {
   const config = options.config ?? loadConfig();
-  const repository = options.repository ?? new InMemoryRepository();
-  if (!options.identityProvider && !config.mockAuthEnabled && config.identityProviderType === "development-mock") {
-    throw new Error("Authentication is disabled because no trusted identity provider is configured");
+  let repository = options.repository;
+  if (!repository) {
+    if (config.repositoryType === "supabase") {
+      repository = new SupabaseRepository({
+        supabaseUrl: config.supabaseUrl,
+        supabaseAnonKey: config.supabaseAnonKey
+      });
+    } else {
+      repository = new InMemoryRepository();
+    }
   }
-  const identityProvider = options.identityProvider ?? new MockIdentityProvider(repository, { enabled: config.mockAuthEnabled });
+  let identityProvider = options.identityProvider;
+  if (!identityProvider) {
+    if (config.environment === "production" && config.identityProviderType !== "supabase") {
+      throw new Error("Production requires a Supabase identity provider");
+    }
+    if (config.identityProviderType === "supabase") {
+      identityProvider = new SupabaseIdentityProvider({
+        repository,
+        supabaseUrl: config.supabaseUrl,
+        supabaseAnonKey: config.supabaseAnonKey
+      });
+    } else if (!config.mockAuthEnabled) {
+      throw new Error("Mock authentication is disabled and no trusted identity provider is configured");
+    } else {
+      identityProvider = new MockIdentityProvider(repository, { enabled: true });
+    }
+  }
   const marketplace = new MarketplaceService(repository);
   const availability = new AvailabilityService(repository);
   const appointments = new AppointmentService(repository);
@@ -34,7 +58,7 @@ export function createApplication(options = {}) {
       res.end(JSON.stringify({ success: false, error: { code: "FORBIDDEN", message: "Origin is not allowed" } }));
       return;
     }
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-User-Id, X-Tenant-Id");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
     if (req.method === "OPTIONS") { res.statusCode = 204; res.end(); return; }
 

@@ -1,3 +1,3 @@
-# Legacy infrastructure directory
+# Supabase PostgreSQL migrations
 
-This directory is retained only for repository compatibility. Supabase/PostgreSQL is not the target architecture. Future persistent storage belongs in Cloudflare D1 migrations and repository implementations.
+PostgreSQL migrations live in `supabase/migrations/`. These migrations are for a Supabase development project and have not been deployed.

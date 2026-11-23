@@ -73,6 +73,13 @@ test("API supports marketplace discovery and the booking lifecycle", async (t) =
   assert.equal(tenants.status, 200);
   assert.equal(tenants.json.data.length, 2);
 
+  const anonymousProfile = await request(server, "GET", "/api/v1/me/profile");
+  assert.equal(anonymousProfile.status, 401);
+  const profile = await request(server, "GET", "/api/v1/me/profile", { userId: "merchant-owner-1" });
+  assert.equal(profile.status, 200);
+  assert.equal(profile.json.data.displayName, "Crown Owner");
+  assert.deepEqual(profile.json.data.memberships.map(({ tenantId }) => tenantId), ["tenant-crown"]);
+
   const unavailable = await request(server, "POST", "/api/v1/appointments", {
     userId: "customer-1",
     body: {
@@ -115,9 +122,8 @@ test("API supports marketplace discovery and the booking lifecycle", async (t) =
   assert.equal(merchant.status, 200);
   assert.equal(merchant.json.data.length, 1);
 
-  const accepted = await request(server, "PATCH", `/api/v1/merchant/appointments/${appointmentId}/accept`, {
-    userId: "merchant-owner-1",
-    tenantId: "tenant-crown"
+  const accepted = await request(server, "PATCH", `/api/v1/merchant/appointments/${appointmentId}/accept?tenantId=tenant-crown`, {
+    userId: "merchant-owner-1"
   });
   assert.equal(accepted.status, 200);
   assert.equal(accepted.json.data.status, "confirmed");

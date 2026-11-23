@@ -117,6 +117,26 @@ export class InMemoryRepository extends RepositoryInterface {
     return clone(updated);
   }
 
+  async rescheduleAppointment(appointmentId, startAt, endAt) {
+    const index = this.appointments.findIndex((appointment) => appointment.id === appointmentId);
+    if (index < 0) throw errors.notFound("Appointment not found");
+    const appointment = this.appointments[index];
+    if ([AppointmentStatus.COMPLETED, AppointmentStatus.DECLINED, AppointmentStatus.CANCELLED, AppointmentStatus.EXPIRED, AppointmentStatus.NO_SHOW].includes(appointment.status)) {
+      throw errors.conflict("A terminal appointment cannot be rescheduled");
+    }
+    const conflict = this.appointments.some((candidate) =>
+      candidate.id !== appointmentId &&
+      candidate.staffId === appointment.staffId &&
+      ![AppointmentStatus.CANCELLED, AppointmentStatus.DECLINED, AppointmentStatus.EXPIRED, AppointmentStatus.NO_SHOW].includes(candidate.status) &&
+      (candidate.status !== AppointmentStatus.PENDING || (candidate.holdExpiresAt && new Date(candidate.holdExpiresAt).getTime() > Date.now())) &&
+      appointmentsOverlap(startAt, endAt, candidate.startAt, candidate.endAt)
+    );
+    if (conflict) throw errors.conflict("The new time conflicts with another appointment");
+    const updated = { ...appointment, startAt, endAt, updatedAt: new Date().toISOString() };
+    this.appointments[index] = clone(updated);
+    return clone(updated);
+  }
+
   async getOperatingHours(tenantId, dayOfWeek) {
     return clone(this.operatingHours.find((x) => x.tenantId === tenantId && x.dayOfWeek === dayOfWeek) ?? null);
   }
