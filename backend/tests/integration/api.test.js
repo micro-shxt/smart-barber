@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createApplication } from "../../src/app.js";
+import { createNodeServer } from "../../src/server.js";
+import { handleWebRequest } from "../../src/worker.js";
+import { loadConfig } from "../../src/config/index.js";
 
 async function request(server, method, path, { body, userId, tenantId } = {}) {
   const headers = {};
@@ -16,7 +19,8 @@ async function request(server, method, path, { body, userId, tenantId } = {}) {
 }
 
 test("API supports marketplace discovery and the booking lifecycle", async (t) => {
-  const { server } = createApplication();
+  const application = createApplication();
+  const server = createNodeServer(application);
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   t.after(() => new Promise((resolve) => server.close(resolve)));
 
@@ -165,4 +169,77 @@ test("API supports marketplace discovery and the booking lifecycle", async (t) =
     tenantId: "tenant-crown"
   });
   assert.equal(badTransition.status, 409);
+});
+
+test("availability rejects invalid dates, inactive resources and past bookings", async (t) => {
+  const application = createApplication();
+  const { repository } = application;
+  const server = createNodeServer(application);
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+
+  const invalidDate = await request(server, "GET", "/api/v1/availability?tenantId=tenant-crown&locationId=location-crown-1&staffId=staff-crown-1&serviceId=service-crown-cut&date=2026-02-30");
+  assert.equal(invalidDate.status, 400);
+
+  repository.tenants.find((tenant) => tenant.id === "tenant-crown").businessStatus = "inactive";
+  const inactive = await request(server, "GET", "/api/v1/availability?tenantId=tenant-crown&locationId=location-crown-1&staffId=staff-crown-1&serviceId=service-crown-cut&date=2026-11-24");
+  assert.equal(inactive.status, 404);
+
+  repository.tenants.find((tenant) => tenant.id === "tenant-crown").businessStatus = "active";
+  const past = await request(server, "POST", "/api/v1/appointments", {
+    userId: "customer-1",
+    body: {
+      tenantId: "tenant-crown",
+      locationId: "location-crown-1",
+      staffId: "staff-crown-1",
+      serviceId: "service-crown-cut",
+      startAt: "2020-01-01T10:00:00+02:00"
+    }
+  });
+  assert.equal(past.status, 409);
+});
+
+test("HTTP security rejects disallowed origins, malformed JSON and oversized bodies", async (t) => {
+  const application = createApplication({ config: (await import("../../src/config/index.js")).loadConfig({
+    CORS_ALLOWED_ORIGINS: "http://localhost:5173",
+    MAX_REQUEST_BODY_BYTES: "64"
+  }) });
+  const server = createNodeServer(application);
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  const cors = await fetch(`${base}/api/v1/marketplace/tenants`, { headers: { Origin: "https://evil.example" } });
+  assert.equal(cors.status, 403);
+
+  const malformed = await fetch(`${base}/api/v1/appointments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-user-id": "customer-1" },
+    body: "{bad"
+  });
+  assert.equal(malformed.status, 400);
+
+  const oversized = await fetch(`${base}/api/v1/appointments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-user-id": "customer-1" },
+    body: JSON.stringify({ tenantId: "tenant-crown", padding: "x".repeat(100) })
+  });
+  assert.equal(oversized.status, 413);
+});
+
+test("mock authentication is fail closed when disabled", () => {
+  assert.throws(() => createApplication({
+    config: loadConfig({ MOCK_AUTH_ENABLED: "false", IDENTITY_PROVIDER_TYPE: "development-mock" })
+  }), /no trusted identity provider/i);
+});
+
+test("Web Request adapter returns standard Worker responses", async () => {
+  const application = createApplication();
+  const request = new Request("http://localhost/health");
+  const response = await handleWebRequest(request, application);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "application/json");
+  const payload = await response.json();
+  assert.equal(payload.success, true);
+  assert.equal(payload.data.timezone, "Africa/Johannesburg");
 });

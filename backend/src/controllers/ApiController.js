@@ -44,13 +44,13 @@ export class ApiController {
 
   async merchantAppointments(req, res) {
     const identity = await this.authenticate(req);
-    const tenantId = req.headers["x-tenant-id"];
+    const tenantId = identity.tenantId;
     this.success(res, await this.appointments.listMerchantAppointments(identity, tenantId));
   }
 
   async merchantTransition(req, res, params, tenantId, nextStatus) {
     const identity = await this.authenticate(req);
-    const resolvedTenantId = tenantId ?? req.headers["x-tenant-id"];
+    const resolvedTenantId = tenantId ?? identity.tenantId;
     const appointment = await this.appointments.merchantTransition(identity, resolvedTenantId, params.appointmentId, nextStatus);
     this.success(res, appointment, "Appointment updated successfully");
   }

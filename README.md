@@ -16,8 +16,8 @@ Primary development stage:
 
 1. frontend preservation and workspace setup;
 2. in-memory backend foundation;
-3. future D1/database integration;
-4. future Cloudflare Worker deployment.
+3. future Cloudflare D1 migration;
+4. future Cloudflare Worker and Pages deployment.
 
 Do not move to or implement Phase 3 unless it is explicitly requested.
 
@@ -31,7 +31,7 @@ Do not move to or implement Phase 3 unless it is explicitly requested.
 - Node built-in HTTP server for the backend
 - in-memory arrays for the Phase 1 repository
 - no Express dependency
-- no D1, Cloudflare, Supabase, or external database dependency
+- no D1 or external database dependency; Cloudflare is the documented future target
 
 No real credentials are required to run the scaffold.
 
@@ -68,7 +68,7 @@ No real credentials are required to run the scaffold.
 │   └── docs/                  Architecture, API and migration documents
 ├── packages/                  Shared future workspace packages
 ├── documentation/             Existing frontend and platform documentation
-├── supabase/                  Reserved for future Supabase assets
+├── supabase/                  Legacy compatibility directory (not target infrastructure)
 ├── .env.example               Public and server variable examples
 ├── package.json               Root workspace scripts
 └── PROJECT_STATUS.md          Earlier project status and pending frontend work
@@ -440,7 +440,7 @@ Before production:
 - no database migrations exist;
 - no D1 binding exists;
 - no Cloudflare Worker entry point exists;
-- no real Supabase project or credentials are required or configured;
+- no Cloudflare account, D1 binding or production identity provider is configured;
 - availability data is limited to seeded hours;
 - business/staff/service management mutations are incomplete;
 - customer profiles and favourites are not persisted;
@@ -460,7 +460,7 @@ Before database integration:
 6. Replace `MockIdentityProvider` with verified identity/session verification.
 7. Adapt `app.js` to a Worker `fetch(request, env, ctx)` entry point.
 8. Inject configuration and bindings instead of reading process environment variables.
-9. Add migrations, RLS-equivalent tenant checks and observability.
+9. Add D1 migrations, tenant-scoped repository checks and observability.
 
 Detailed guidance is in:
 
@@ -484,7 +484,7 @@ For a future coding agent, continue in this order:
 7. run `npm run test:backend`;
 8. run `npm run build`;
 9. update relevant backend documentation;
-10. do not introduce Cloudflare/D1/Supabase dependencies until explicitly requested.
+10. do not introduce Cloudflare/D1 dependencies until explicitly requested.
 
 ## 15. Known existing-repository issues
 
@@ -492,4 +492,4 @@ For a future coding agent, continue in this order:
 - Frontend code uses external Google Fonts, jsDelivr, and Pexels resources.
 - Inline CSS and JavaScript should eventually be extracted.
 - The frontends currently use sample data and do not consume the backend API yet.
-- Existing documentation about future Supabase integration is planning documentation, not current implementation.
+- Existing prototype documentation is planning-only; Cloudflare Workers and D1 are the documented future direction.

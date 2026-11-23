@@ -12,9 +12,9 @@ Each application has its own build and local development command, but they consu
 
 ## Shared backend
 
-Supabase PostgreSQL is the system of record. Supabase Auth identifies users and creates authenticated sessions. Edge Functions provide trusted server-side operations. Supabase Realtime will carry selected live updates.
+Cloudflare D1 is the documented future system of record. Cloudflare Workers provide trusted server-side operations. A production identity provider verifies browser identities and maps them to internal users and memberships.
 
-Application boundaries do not replace database isolation. Browser calls must use the anonymous key and remain constrained by PostgreSQL Row Level Security.
+Application boundaries do not replace database isolation. Browser applications receive public configuration only. Tenant and platform authorization are server-enforced; D1 does not provide PostgreSQL Row Level Security.
 
 ## Communication flow
 
@@ -22,19 +22,19 @@ Application boundaries do not replace database isolation. Browser calls must use
 Customer / Merchant / Admin browser
                 |
                 v
-       Supabase Auth
+  Production identity adapter
                 |
                 v
-  Supabase PostgreSQL + RLS
-                ^
-                |
-       Supabase Edge Functions
+       Cloudflare Worker
                 |
                 v
-        Trusted integrations
+        Cloudflare D1
+                |
+                v
+      Tenant-scoped repositories
 ```
 
-The browser should call Edge Functions only for operations that require trusted logic or privileged server-side access. No frontend code will receive or use the service-role key.
+The browser should call Cloudflare Workers only for operations that require trusted logic or privileged server-side access. No frontend code will receive D1 bindings or administrative secrets.
 
 ## Shared packages
 

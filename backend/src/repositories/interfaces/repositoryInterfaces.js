@@ -11,6 +11,7 @@ export class RepositoryInterface {
   async findStaffById() { throw new Error("Repository method not implemented"); }
   async findLocationById() { throw new Error("Repository method not implemented"); }
   async findMembership() { throw new Error("Repository method not implemented"); }
+  async findMembershipsByUser() { throw new Error("Repository method not implemented"); }
   async findUserById() { throw new Error("Repository method not implemented"); }
   async listAppointmentsByCustomer() { throw new Error("Repository method not implemented"); }
   async listAppointmentsByTenant() { throw new Error("Repository method not implemented"); }

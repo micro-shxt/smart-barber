@@ -6,7 +6,7 @@ This document describes the planned schema and relationships. No live database o
 
 ### `platform_administrators`
 
-Identifies authorized platform operators and their platform roles. Administrative access must be checked outside ordinary tenant RLS paths.
+Identifies authorized platform operators and their platform roles. Administrative access must be checked outside ordinary tenant query paths.
 
 ### `tenants`
 
@@ -79,6 +79,6 @@ Records privileged and sensitive changes for platform and business operations.
 - An appointment belongs to one tenant, one branch, one customer and one selected service.
 - A tenant subscription belongs to a tenant and a subscription plan.
 
-## Row Level Security
+## D1 tenant isolation
 
-Tenant-owned tables should use `tenant_id` and RLS policies based on authenticated membership. Customer records should be readable and writable only within their permitted ownership and tenant context. Platform administrator tables should use separate role checks and protected server operations.
+Every tenant-owned D1 query must include `tenant_id` in the SQL predicate and must be authorized from a verified identity. SQLite/D1 does not provide PostgreSQL Row Level Security; isolation must be enforced in repository queries and server-side authorization. Customer records must be scoped to customer ownership, and platform administrator records must use separate server-side role checks.

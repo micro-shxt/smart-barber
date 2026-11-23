@@ -1,6 +1,20 @@
-# Future Cloudflare Migration
+# Cloudflare migration preparation
 
-This phase does not implement Cloudflare Workers or a database.
+The Node in-memory implementation remains the local adapter. A standard Web Request/Response entry is prepared in `backend/src/worker.js`, and `backend/src/cloudflare-worker.js` is the Worker entry.
+
+## D1 migration
+
+Run the versioned migration with Wrangler after creating a D1 database in the target account:
+
+```bash
+npx wrangler d1 create smart-barber
+npx wrangler d1 migrations apply smart-barber --local
+npx wrangler d1 migrations apply smart-barber
+```
+
+No account ID or database ID is stored in source control.
+
+The migration currently under `backend/migrations/` defines the core domain, membership, appointment, notification and platform audit tables. D1 foreign keys and tenant-scoped indexes must be retained.
 
 ## Repository replacement
 
@@ -19,7 +33,6 @@ Replace `MockIdentityProvider` with an adapter that verifies a production identi
 - Production identity and session issuance
 - Persistent D1 schema and migrations
 - Atomic cross-instance conflict prevention
-- Complete operating-hours and time-off administration
 - Staff/location/service management mutations
 - Customer profile and favourites
 - Real availability slot endpoint persistence

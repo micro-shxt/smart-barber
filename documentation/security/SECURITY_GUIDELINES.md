@@ -2,15 +2,15 @@
 
 ## Authentication
 
-Supabase Auth will authenticate browser users. Applications must check authorization and never treat hidden navigation as security.
+A production identity provider will authenticate browser users. Applications must check authorization and never treat hidden navigation as security.
 
 Administrative operations must require server-side authorization and role checks. Business and customer data must be filtered and protected by tenant, branch and role policies.
 
 ## Secrets
 
-`VITE_SUPABASE_ANON_KEY` is designed for public browser use and is not an administrative secret. The Supabase service-role key must never be placed in JavaScript, Vite variables, GitHub files or Cloudflare Pages public configuration.
+Only public API URLs and public frontend configuration may use `VITE_` variables. Production identity credentials, D1 bindings and administrative secrets must never be placed in JavaScript or Pages public configuration.
 
-Trusted server-side code may use the service-role key only when the execution environment is protected and every privileged operation has explicit authorization checks.
+Trusted server-side code may access secrets only from a protected runtime environment, and every privileged operation must have explicit authorization checks.
 
 Local environment files are ignored by Git. `.env.example` contains names only.
 
@@ -18,19 +18,19 @@ Local environment files are ignored by Git. `.env.example` contains names only.
 
 Each business will have a stable tenant ID. The user-to-tenant relationship should include ownership and role data. Branches and employees belong to tenants.
 
-PostgreSQL Row Level Security will be enabled for tenant-owned tables. Policies should derive access from the authenticated user, not from browser-supplied tenant values.
+D1 repository queries must include tenant scope and derive access from verified identity membership. Browser-supplied tenant values must never authorize a request.
 
 ## Data operations
 
 - Never trust a tenant ID sent only by the browser.
-- Reject unauthorized reads and writes at database policy level.
-- Use Edge Functions or trusted Workers for operations that require elevated privileges.
+- Reject unauthorized reads and writes in repository and service authorization.
+- Use trusted Workers for operations that require elevated privileges.
 - Enable audit logs for administrative and sensitive business changes.
 - Add constraints for appointment conflicts and other integrity rules.
 
-## Supabase configuration
+## Local development
 
-The anonymous key may be public. Database RLS is mandatory for browser-accessible tables. Storage buckets and Realtime subscriptions require similarly explicit policies.
+Mock headers are development-only and must fail closed outside local development. Production authentication must verify identity outside browser-supplied headers.
 
 ## Deployment
 

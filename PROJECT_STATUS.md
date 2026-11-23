@@ -4,7 +4,7 @@
 
 - Audited the existing repository.
 - Classified the three existing HTML prototypes.
-- Created the monorepo application, package, infrastructure, Supabase and documentation directories.
+- Created the monorepo application, package, infrastructure and documentation structure.
 - Moved the prototypes into their corresponding Vite application directories without rewriting their code.
 - Added npm workspace configuration and independent development/build scripts.
 - Added a secret-safe `.env.example` and root `.gitignore`.
@@ -14,7 +14,10 @@
 - Built all three applications successfully with Vite.
 - Started all three Vite development entry points and confirmed HTTP 200 responses.
 - Added shared visual tokens and premium customer, merchant, and deployment-specific CSS overrides.
-- Preserved existing inline application data and JavaScript interactions.
+- Preserved existing inline application layouts and interactions.
+- Added shared API utilities and connected customer/merchant appointment flows to the Node backend.
+- Hardened backend availability, booking, authentication and HTTP validation with in-memory storage.
+- Documented Cloudflare Workers and D1 as the future runtime and database direction.
 
 ## Current structure
 
@@ -22,17 +25,16 @@
 - Smart Barber Business: `apps/merchant-app/index.html`
 - Smart Barber: `apps/customer-app/index.html`
 - Shared future packages: `packages/*`
-- Future backend resources: `supabase/*`
+- Reserved future infrastructure resources: `infrastructure/*`
 - Future infrastructure resources: `infrastructure/*`
 
 ## Pending
 
-- Extract each prototype's inline CSS and JavaScript into maintainable modules.
+- Continue extracting each prototype's inline CSS and JavaScript into maintainable modules.
 - Build the shared design system and reusable components.
-- Define and implement Supabase authentication.
-- Define and implement PostgreSQL entities and migrations.
-- Implement tenant and role-based Row Level Security policies.
-- Replace prototype data and SDK dependencies with application services.
+- Add a trusted production identity provider.
+- Implement D1 migrations and the D1 repository.
+- Replace remaining prototype data and unavailable SDK dependencies.
 - Configure Cloudflare Pages and Workers.
 - Configure Capacitor Android packaging.
 - Add automated tests.
@@ -48,8 +50,8 @@
 
 ## Missing dependencies and credentials
 
-- Supabase project URL and anonymous key.
-- Supabase service-role key, kept outside all frontend code.
+- A trusted production identity provider configuration.
+- Cloudflare account, D1 database and Pages project settings.
 - Cloudflare account configuration, if deployment is started.
 - Android signing configuration, if packaging is started.
 - Node dependencies are installed; run `npm install` after package or Node environment changes.
@@ -59,5 +61,5 @@
 1. Install dependencies and verify the three Vite builds.
 2. Extract reusable styles into `packages/shared-ui` and shared CSS assets.
 3. Add application-specific routing and JavaScript modules.
-4. Draft the first database migration and RLS policies.
-5. Add Supabase configuration only after a project and credentials have been created.
+4. Draft and test the first Cloudflare D1 migrations.
+5. Implement D1 repository methods and booking concurrency protection.

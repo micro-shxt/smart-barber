@@ -1,10 +1,8 @@
 # Deployment Plan
 
-## Supabase
+## Cloudflare database direction
 
-Supabase hosts PostgreSQL, Auth and Edge Functions. Database migrations should be reviewed and applied through version control. Realtime should be enabled only for data that is subject to explicit RLS policies.
-
-Public browser configuration will include the Supabase project URL and anonymous key. The service-role key will remain in the Supabase or trusted server environment.
+Smart Barber's future backend is Cloudflare Workers with Cloudflare D1. SQLite-compatible migrations will be versioned and applied to D1. PostgreSQL and RLS are not the target architecture.
 
 ## Cloudflare Pages
 
@@ -16,11 +14,11 @@ Each frontend application should be deployed as a separate Cloudflare Pages proj
 
 Cloudflare Pages build settings should point to the root workspace and use the corresponding build script.
 
-Environment variables in Cloudflare Pages must contain public values only. Privileged operations should use protected Edge Functions or Cloudflare Workers.
+Environment variables in Cloudflare Pages must contain public values only. Privileged operations should use protected Cloudflare Workers.
 
 ## Cloudflare Workers
 
-Workers may be used for routing, public APIs or server-side integrations that are not suitable for direct browser calls. Workers must not expose Supabase service-role credentials and should use least-privilege secrets.
+Workers provide routing, public APIs and server-side integrations. Workers must not expose D1 bindings or administrative secrets to Pages/browser applications and must use least-privilege environment bindings and secrets.
 
 ## Android
 

@@ -28,4 +28,4 @@ The identity provider is intentionally mock-only. It must be replaced by a verif
 - Conflict detection is not concurrency-safe across server instances.
 - Mock authentication does not establish cryptographically verified sessions.
 - No Cloudflare bindings, D1 database or production secrets are configured.
-- Supabase and Cloudflare remain future integration targets.
+- Cloudflare Workers and D1 are the future runtime/database targets.

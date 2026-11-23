@@ -81,17 +81,20 @@ export class InMemoryRepository extends RepositoryInterface {
   async findStaffById(id) { return clone(this.staff.find((x) => x.id === id) ?? null); }
   async findLocationById(id) { return clone(this.locations.find((x) => x.id === id) ?? null); }
   async findMembership(userId, tenantId) { return clone(this.memberships.find((x) => x.userId === userId && x.tenantId === tenantId && x.membershipStatus === MembershipStatus.ACTIVE) ?? null); }
+  async findMembershipsByUser(userId) { return clone(this.memberships.filter((x) => x.userId === userId && x.membershipStatus === MembershipStatus.ACTIVE)); }
   async findUserById(id) { return clone(this.users.find((x) => x.id === id) ?? null); }
   async listAppointmentsByCustomer(customerId) { return clone(this.appointments.filter((x) => x.customerId === customerId)); }
   async listAppointmentsByTenant(tenantId) { return clone(this.appointments.filter((x) => x.tenantId === tenantId)); }
   async findAppointmentById(id) { return clone(this.appointments.find((x) => x.id === id) ?? null); }
 
   async createAppointmentAtomically(input) {
-    const conflicts = this.appointments.filter((x) =>
-      x.staffId === input.staffId &&
-      ![AppointmentStatus.CANCELLED, AppointmentStatus.DECLINED, AppointmentStatus.EXPIRED, AppointmentStatus.NO_SHOW].includes(x.status) &&
-      appointmentsOverlap(input.startAt, input.endAt, x.startAt, x.endAt)
-    );
+    const now = Date.now();
+    const conflicts = this.appointments.filter((x) => {
+      if (x.staffId !== input.staffId) return false;
+      if ([AppointmentStatus.CANCELLED, AppointmentStatus.DECLINED, AppointmentStatus.EXPIRED, AppointmentStatus.NO_SHOW].includes(x.status)) return false;
+      if (x.status === AppointmentStatus.PENDING && (!x.holdExpiresAt || new Date(x.holdExpiresAt).getTime() <= now)) return false;
+      return appointmentsOverlap(input.startAt, input.endAt, x.startAt, x.endAt);
+    });
     if (conflicts.length) throw errors.conflict("The selected staff member already has an overlapping appointment");
     const holdExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
     const appointment = createAppointment({

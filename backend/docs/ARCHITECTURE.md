@@ -17,4 +17,4 @@ Domain entities and rules do not import HTTP or database libraries. Repositories
 
 ## Repository audit
 
-The existing repository contains three independent Vite HTML applications. The customer and merchant interfaces are preserved and are not rewritten. Existing documentation references future Supabase integration, while this phase introduces no Supabase or Cloudflare runtime dependency.
+The existing repository contains three independent Vite HTML applications. The customer and merchant interfaces are preserved and are not rebuilt. Current storage is in memory. Cloudflare Workers and D1 are the documented future runtime and database direction; no Cloudflare or D1 dependency is introduced in local development.

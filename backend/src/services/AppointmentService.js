@@ -2,6 +2,7 @@ import { AppointmentStatus } from "../domain/enums/appointmentStatus.js";
 import { MembershipStatus } from "../domain/enums/membership.js";
 import { errors } from "../domain/errors/domainErrors.js";
 import { assertValidTransition, appointmentsOverlap } from "../domain/rules/appointmentRules.js";
+import { localDateParts, minutesFromTime } from "../utils/time.js";
 
 export class AppointmentService {
   constructor(repository) { this.repository = repository; }
@@ -15,6 +16,7 @@ export class AppointmentService {
     if (!/(Z|[+-]\d{2}:\d{2})$/.test(input.startAt)) throw errors.validation("startAt must include ISO 8601 timezone information");
     const start = new Date(input.startAt);
     if (Number.isNaN(start.getTime())) throw errors.validation("startAt is not a valid ISO 8601 timestamp");
+    if (start.getTime() <= Date.now()) throw errors.conflict("Bookings cannot be created in the past");
 
     const tenant = await this.repository.findTenantById(input.tenantId);
     const location = await this.repository.findLocationById(input.locationId);
@@ -32,30 +34,17 @@ export class AppointmentService {
     const end = new Date(start.getTime() + totalMinutes * 60000);
     const endAt = end.toISOString();
 
-    const johannesburgParts = new Intl.DateTimeFormat("en-ZA", {
-      timeZone: "Africa/Johannesburg", weekday: "short"
-    }).formatToParts(start);
-    const weekdayName = johannesburgParts.find((part) => part.type === "weekday")?.value;
-    const dayMap = { Sun: 7, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-    const dayOfWeek = dayMap[weekdayName];
+    const local = localDateParts(start, tenant.timezone);
+    const dayOfWeek = local.dayOfWeek;
     const tenantHours = await this.repository.getOperatingHours(input.tenantId, dayOfWeek);
     const staffHours = await this.repository.getStaffHours(staff.id, dayOfWeek);
     if (!tenantHours || !staffHours) throw errors.conflict("The business or staff member is unavailable at this time");
 
-    const dateKey = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Africa/Johannesburg", year: "numeric", month: "2-digit", day: "2-digit"
-    }).format(start);
-    const localTime = (date) => {
-      const parts = new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Africa/Johannesburg", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
-      }).formatToParts(date);
-      return `${parts.find((x) => x.type === "hour").value}:${parts.find((x) => x.type === "minute").value}`;
-    };
-    const toMinutes = (value) => { const [h, m] = value.split(":").map(Number); return h * 60 + m; };
-    const startMinutes = toMinutes(localTime(start));
-    const endMinutes = toMinutes(localTime(end));
-    if (startMinutes < toMinutes(tenantHours.openTime) || endMinutes > toMinutes(tenantHours.closeTime) ||
-        startMinutes < toMinutes(staffHours.startTime) || endMinutes > toMinutes(staffHours.endTime)) {
+    const startMinutes = minutesFromTime(local.time);
+    const localEnd = localDateParts(end, tenant.timezone);
+    const endMinutes = minutesFromTime(localEnd.time);
+    if (startMinutes < minutesFromTime(tenantHours.openTime) || endMinutes > minutesFromTime(tenantHours.closeTime) ||
+        startMinutes < minutesFromTime(staffHours.startTime) || endMinutes > minutesFromTime(staffHours.endTime)) {
       throw errors.conflict("The appointment is outside operating or staff working hours");
     }
 
