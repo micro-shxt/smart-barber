@@ -101,7 +101,7 @@ const sample=Object.fromEntries(Object.entries(demo).map(([tenant,groups])=>[ten
  if(type==="customer"){let [item_id,name,notes,details]=r;return {item_id,name,notes,details,record_type:type,tenant_id:tenant,status:"Active"}}
  let [item_id,name,details,notes,status]=r;return {item_id,name,details,notes,status,record_type:type,tenant_id:tenant}
  })]))]));
-let saved=[],ready=false,page="Overview",tenant=null,role="Owner",branch="All branches",query="",filter="All",view="List",weekShift=0,busy=false,currentUser=null,authMode="login",authMessage="",memberships=[];
+let saved=[],ready=false,page="Overview",tenant=null,role="Owner",branch="All branches",query="",filter="All",view="List",weekShift=0,busy=false,currentUser=null,merchantRealtime=null,authMode="login",authMessage="",memberships=[];
 const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const icon=n=>`<i data-lucide="${n}"></i>`,badge=s=>`<span class="badge ${esc(String(s).toLowerCase().replaceAll(" ","-"))} canva-tag">${esc(s)}</span>`;
 const records=type=>saved.filter(x=>x.tenant_id===tenant&&x.record_type===type).map(x=>({...x}));
@@ -218,16 +218,26 @@ window.smartBarberLoadWorkspace=loadMerchantWorkspace;
  try{
   const api=await import("./src/merchant.js");
   window.smartBarberMerchantApi=api;window.smartBarberAuthView=api.renderAuthView;window.smartBarberAuthSubmit=api.submitAuthForm;window.smartBarberMoney=api.formatZarMinor;
-  api.auth.onAuthStateChange((event,session)=>{currentUser=session?.user||null;if(!currentUser){tenant=null;saved=[];ready=false}if(event==="SIGNED_OUT"){authMode="login";authMessage=""}render()});
+  async function startMerchantRealtime(userId){
+   if(merchantRealtime)await merchantRealtime.stop();
+   merchantRealtime=api.createRealtimeSubscriptionService({
+    supabase:api.auth.supabase,
+    profileId:userId,
+    onUpdate:async()=>{await loadMerchantWorkspace(tenant);render()},
+    onReconnect:async()=>{await loadMerchantWorkspace(tenant);render()}
+   });
+  }
+  async function stopMerchantRealtime(){if(merchantRealtime){await merchantRealtime.stop();merchantRealtime=null}}
+  api.auth.onAuthStateChange(async(event,session)=>{currentUser=session?.user||null;if(currentUser)await startMerchantRealtime(currentUser.id);else{await stopMerchantRealtime();tenant=null;saved=[];ready=false}if(event==="SIGNED_OUT"){authMode="login";authMessage=""}render()});
   const session=await api.auth.validateSession();currentUser=session?.user||null;
-  if(currentUser){await loadMerchantWorkspace();authMode=null}else{authMode="login"}
+  if(currentUser){await startMerchantRealtime(currentUser.id);await loadMerchantWorkspace();authMode=null}else{authMode="login"}
   render();
  }catch(error){workspaceError=error.message||"Authentication or backend configuration is unavailable.";if(!window.smartBarberAuthView)window.smartBarberAuthView=(_mode,message)=>`<section class="card canva-card" style="max-width:480px;margin:48px auto"><h1>Authentication unavailable</h1><p class="subtitle">${esc(message)}</p><p class="subtitle">Configure VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_API_BASE_URL.</p></section>`;if(!currentUser){authMessage=workspaceError;authMode="login"}else notify(workspaceError,true);render()}
 })();
-document.addEventListener("smartbarber:auth-required",async()=>{try{await window.smartBarberMerchantApi.auth.logout()}catch(error){notify(error.message||"Your session expired.",true)}currentUser=null;tenant=null;saved=[];authMode="login";authMessage="Your session expired. Please sign in again.";render()});
+document.addEventListener("smartbarber:auth-required",async()=>{try{await window.smartBarberMerchantApi.auth.logout()}catch(error){notify(error.message||"Your session expired.",true)}if(merchantRealtime){await merchantRealtime.stop();merchantRealtime=null}currentUser=null;tenant=null;saved=[];authMode="login";authMessage="Your session expired. Please sign in again.";render()});
 document.addEventListener("click",async(event)=>{
  const mode=event.target.closest("[data-auth-mode]");if(mode){authMode=mode.dataset.authMode;authMessage="";render();return}
- if(event.target.closest('[data-action="logout"]')){try{const result=await window.smartBarberMerchantApi.auth.logout();if(result.error)throw result.error;currentUser=null;tenant=null;saved=[];authMode="login";render()}catch(error){notify(error.message||"Could not sign out.",true)}}
+ if(event.target.closest('[data-action="logout"]')){try{const result=await window.smartBarberMerchantApi.auth.logout();if(result.error)throw result.error;if(merchantRealtime){await merchantRealtime.stop();merchantRealtime=null}currentUser=null;tenant=null;saved=[];authMode="login";render()}catch(error){notify(error.message||"Could not sign out.",true)}}
 },true);
 document.addEventListener("submit",async event=>{
  const form=event.target.closest("[data-auth-form]");if(!form)return;event.preventDefault();const button=form.querySelector('button[type="submit"]'),errorNode=form.querySelector("[data-auth-error]");button.disabled=true;button.textContent="Please wait…";

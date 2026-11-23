@@ -3,6 +3,7 @@ import { createSupabaseBrowserAuth } from "../../../packages/shared-utils/supaba
 
 export { renderAuthView, submitAuthForm } from "../../../packages/shared-utils/authView.js";
 export { formatZarMinor } from "../../../packages/shared-utils/currency.js";
+export { createRealtimeSubscriptionService } from "../../../packages/shared-utils/realtimeService.js";
 
 export const auth = createSupabaseBrowserAuth();
 const api = createApiClient({
@@ -50,6 +51,10 @@ export function getAvailability({ tenantId, locationId, staffId, serviceId, date
 
 export function createAppointment(input) {
   return api.post("/appointments", input);
+}
+
+export function getNotifications() {
+  return api.get("/me/notifications");
 }
 
 export function cancelAppointment(id) {

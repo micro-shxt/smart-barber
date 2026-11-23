@@ -45,7 +45,7 @@ let providers=[
 providers=[];
 const navItems=[["Home","house"],["Explore","compass"],["Bookings","calendar-days"],["Favourites","heart"],["Profile","user-round"]];
 const $=s=>document.querySelector(s), esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])),icon=n=>`<i data-lucide="${n}"></i>`,money=n=>window.smartBarberMoney(n),dateLabel=d=>new Date(d+"T12:00:00").toLocaleDateString("en-ZA",{weekday:"short",day:"numeric",month:"short"});
-let page="Home",selectedProvider=null,modal="",booking={},records=[],ready=false,busy=false,search="",category="All",city="All cities",maxPrice="All",minRating="All",availability="All",savedProviders=new Set(),savedServices=new Set(),ownedIds=new Set(),noticePrefs={reminders:true,updates:true,offers:false},recent=[],currentUser=null,backendProfile=null,authMode=null,authMessage="",authReturnPage="Home",recoveryFlow=false,availabilitySlots=[],availabilityLoading=false,availabilityError="",availabilityRequest=0;
+let page="Home",selectedProvider=null,modal="",booking={},records=[],ready=false,busy=false,search="",category="All",city="All cities",maxPrice="All",minRating="All",availability="All",savedProviders=new Set(),savedServices=new Set(),ownedIds=new Set(),noticePrefs={reminders:true,updates:true,offers:false},recent=[],currentUser=null,backendProfile=null,customerRealtime=null,authMode=null,authMessage="",authReturnPage="Home",recoveryFlow=false,availabilitySlots=[],availabilityLoading=false,availabilityError="",availabilityRequest=0;
 function icons(){if(window.lucide)lucide.createIcons()}
 function toast(text,error=false){$("#toast-root").innerHTML=`<div class="toast ${error?"error":""}">${esc(text)}</div>`;clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$("#toast-root").innerHTML="",4500)}
 function readFavoriteSet(key){try{let value=JSON.parse(localStorage.getItem(key)||"[]");return new Set(Array.isArray(value)?value.filter(item=>typeof item==="string"):[])}catch{return new Set()}}
@@ -88,16 +88,27 @@ render();
  try {
   const api=await import("./src/customer.js");
   window.smartBarberCustomerApi=api;window.smartBarberAuthView=api.renderAuthView;window.smartBarberAuthSubmit=api.submitAuthForm;window.smartBarberMoney=api.formatZarMinor;
-  const {data:{subscription}}=api.auth.onAuthStateChange((event,session)=>{
+  async function startCustomerRealtime(userId){
+   if(customerRealtime)await customerRealtime.stop();
+   customerRealtime=api.createRealtimeSubscriptionService({
+    supabase:api.auth.supabase,
+    profileId:userId,
+    onUpdate:async()=>{await loadCustomerBookings();render()},
+    onReconnect:async()=>{await loadCustomerBookings();render()}
+   });
+  }
+  async function stopCustomerRealtime(){if(customerRealtime){await customerRealtime.stop();customerRealtime=null}}
+  const {data:{subscription}}=api.auth.onAuthStateChange(async(event,session)=>{
    currentUser=session?.user||null;
    if(event==="PASSWORD_RECOVERY"){authMode="update-password";authMessage="";recoveryFlow=true}
-   if(currentUser){savedProviders=readFavoriteSet("smart-barber-favourites:"+currentUser.id);savedServices=readFavoriteSet("smart-barber-service-favourites:"+currentUser.id)}
-   else{savedProviders.clear();savedServices.clear();records=[];ownedIds.clear();backendProfile=null}
+   if(currentUser){savedProviders=readFavoriteSet("smart-barber-favourites:"+currentUser.id);savedServices=readFavoriteSet("smart-barber-service-favourites:"+currentUser.id);await startCustomerRealtime(currentUser.id)}
+   else{await stopCustomerRealtime();savedProviders.clear();savedServices.clear();records=[];ownedIds.clear();backendProfile=null}
    if(currentUser&&authMode==="login"){authMode=null;authMessage="";page=authReturnPage}
    render();
   });
   const session=await api.auth.validateSession();
   currentUser=session?.user||null;
+  if(currentUser)await startCustomerRealtime(currentUser.id);
   const businesses=await api.loadMarketplace();
   const images=["https://images.pexels.com/photos/1813272/pexels-photo-1813272.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop","https://images.pexels.com/photos/1564828/pexels-photo-1564828.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop","https://images.pexels.com/photos/3985360/pexels-photo-3985360.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop"];
   providers=businesses.map((item,index)=>({id:item.id,name:item.name,category:"Beauty & grooming",city:"South Africa",area:"South Africa",rating:null,reviews:0,distance:"",next:"See availability",image:images[index%images.length],portfolio:[],description:item.description||"Explore services from this local business.",hours:"See available times when booking",team:item.staff.map(staff=>staff.displayName),services:item.services.map(service=>[service[0],service[1],service[2],service[3]]),review:[],tenant:item.tenant,staff:item.staff,tenantServices:item.tenantServices,locationId:item.locationId}));
@@ -111,7 +122,7 @@ render();
   toast(authMessage,true);render();
  }
 })();
-document.addEventListener("smartbarber:auth-required",async()=>{try{await window.smartBarberCustomerApi.auth.logout()}catch(error){toast(error.message||"Your session expired.",true)}currentUser=null;backendProfile=null;records=[];ownedIds.clear();authMode="login";authMessage="Your session expired. Please sign in again.";render()});
+document.addEventListener("smartbarber:auth-required",async()=>{try{await window.smartBarberCustomerApi.auth.logout()}catch(error){toast(error.message||"Your session expired.",true)}if(customerRealtime){await customerRealtime.stop();customerRealtime=null}currentUser=null;backendProfile=null;records=[];ownedIds.clear();authMode="login";authMessage="Your session expired. Please sign in again.";render()});
 document.addEventListener("click",async event=>{
  const favourite=event.target.closest("[data-favourite],[data-service-favourite]");
  if(favourite){event.preventDefault();event.stopImmediatePropagation();if(!currentUser){authReturnPage=page==="Detail"?"Explore":page;authMode="login";authMessage="Sign in to save favourites.";render();return}if(favourite.hasAttribute("data-favourite")){let id=favourite.dataset.favourite;savedProviders.has(id)?savedProviders.delete(id):savedProviders.add(id)}else{let key=favourite.dataset.serviceFavourite;savedServices.has(key)?savedServices.delete(key):savedServices.add(key)}persistFavorites();render();return}
@@ -123,7 +134,7 @@ document.addEventListener("click",async event=>{
  if(reschedule){event.preventDefault();event.stopImmediatePropagation();if(!currentUser)return;let appointment=records.find(item=>item.item_id===reschedule.dataset.reschedule),provider=providers.find(item=>item.id===appointment?.tenant_id);if(!provider)return;let date=new Date(appointment.starts_at),serviceIndex=provider.tenantServices.findIndex(item=>item.id===appointment.service_id),staff=provider.staff.find(item=>item.id===appointment.staff_id);booking={providerId:provider.id,serviceIndex:Math.max(0,serviceIndex),employee:staff?.id||provider.staff[0]?.id,date:[date.getFullYear(),String(date.getMonth()+1).padStart(2,"0"),String(date.getDate()).padStart(2,"0")].join("-"),startAt:"",editId:appointment.item_id};bookingForm();return}
  const mode=event.target.closest("[data-auth-mode]");
  if(mode){authMode=mode.dataset.authMode;authMessage="";render();return}
- if(event.target.closest('[data-action="logout"]')){try{const result=await window.smartBarberCustomerApi.auth.logout();if(result.error)throw result.error;currentUser=null;backendProfile=null;authMode=null;page="Home";render()}catch(error){toast(error.message||"Could not sign out.",true)}}
+ if(event.target.closest('[data-action="logout"]')){try{const result=await window.smartBarberCustomerApi.auth.logout();if(result.error)throw result.error;if(customerRealtime){await customerRealtime.stop();customerRealtime=null}currentUser=null;backendProfile=null;authMode=null;page="Home";render()}catch(error){toast(error.message||"Could not sign out.",true)}}
 },true);
 document.addEventListener("submit",async event=>{
  const form=event.target.closest("[data-auth-form]");if(!form)return;event.preventDefault();

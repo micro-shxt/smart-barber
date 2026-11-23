@@ -1,10 +1,11 @@
 import { AppointmentStatus } from "../domain/enums/appointmentStatus.js";
 
 export class ApiController {
-  constructor({ marketplace, availability, appointments, identityProvider }) {
+  constructor({ marketplace, availability, appointments, media, identityProvider }) {
     this.marketplace = marketplace;
     this.availability = availability;
     this.appointments = appointments;
+    this.media = media;
     this.identityProvider = identityProvider;
   }
 
@@ -83,5 +84,42 @@ export class ApiController {
     const identity = await this.authenticate(req);
     const appointment = await this.appointments.rescheduleAppointment(identity, params.appointmentId, body?.startAt);
     this.success(res, appointment, "Appointment rescheduled successfully");
+  }
+
+  async createMediaUpload(req, res, body) {
+    const identity = await this.authenticate(req);
+    if (!this.media) throw new Error("Storage is unavailable");
+    const result = await this.media.createUpload(identity, body);
+    this.success(res, result, "Secure media upload prepared", 201);
+  }
+
+  async createMediaSignedUrl(req, res, params) {
+    const identity = await this.authenticate(req);
+    if (!this.media) throw new Error("Storage is unavailable");
+    const result = await this.media.createSignedReadUrl(identity, params.assetId);
+    this.success(res, result, "Signed media URL created");
+  }
+
+  async deleteMedia(req, res, params) {
+    const identity = await this.authenticate(req);
+    if (!this.media) throw new Error("Storage is unavailable");
+    await this.media.deleteMedia(identity, params.assetId);
+    this.success(res, { assetId: params.assetId }, "Media deleted successfully");
+  }
+
+  async myNotifications(req, res) {
+    const identity = await this.authenticate(req);
+    const notifications = await this.marketplace.repository?.listNotifications?.(identity.id, {
+      accessToken: identity.accessToken
+    });
+    this.success(res, notifications || [], "Notifications retrieved successfully");
+  }
+
+  async merchantNotifications(req, res) {
+    const identity = await this.authenticate(req);
+    const notifications = await this.marketplace.repository?.listNotifications?.(identity.id, {
+      accessToken: identity.accessToken
+    });
+    this.success(res, notifications || [], "Notifications retrieved successfully");
   }
 }

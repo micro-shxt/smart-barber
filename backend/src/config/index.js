@@ -13,7 +13,7 @@ export function loadConfig(env = globalThis.process?.env ?? {}) {
     supabaseUrl: env.SUPABASE_URL || "",
     supabaseAnonKey: env.SUPABASE_ANON_KEY || "",
     supabaseServiceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY || "",
-    repositoryType: env.REPOSITORY_TYPE || "memory",
+    repositoryType: environment === "production" ? "supabase" : (env.REPOSITORY_TYPE || "memory"),
     allowedOrigins,
     maxRequestBodyBytes: Number(env.MAX_REQUEST_BODY_BYTES || 1048576)
   });
