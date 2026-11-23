@@ -35,3 +35,29 @@ Use a small spacing scale such as 4, 8, 12, 16, 24, 32 and 48 pixels. Components
 Shared layouts should support desktop, tablet and mobile widths. Navigation and dense tables require deliberate mobile behavior rather than horizontal overflow.
 
 Implementation belongs in `packages/shared-ui` after the current prototypes are safely separated into CSS and JavaScript modules.
+
+## Implemented application tokens
+
+The initial visual implementation uses app-local public CSS layers:
+
+- `apps/customer-app/public/styles/shared.css`
+- `apps/customer-app/public/styles/customer.css`
+- `apps/merchant-app/public/styles/shared.css`
+- `apps/merchant-app/public/styles/merchant.css`
+- `apps/deployment-manager/public/styles/shared.css`
+- `apps/deployment-manager/public/styles/deployment.css`
+
+The shared palette is also documented in `documentation/development/DESIGN_SYSTEM.md`. The application overrides deliberately keep their different interaction models: marketplace discovery for customers and dense operational surfaces for business and platform users.
+
+## Visual research
+
+Dribbble searches reviewed for broad direction:
+
+- <https://dribbble.com/search/barber-booking-app>
+- <https://dribbble.com/search/salon-appointment-app>
+- <https://dribbble.com/search/appointment-dashboard>
+- <https://dribbble.com/search/saas-admin-dashboard>
+- <https://dribbble.com/search/crm-dashboard>
+- <https://dribbble.com/search/salon-marketplace>
+
+Automated review of Dribbble search pages was limited by the website response, so no individual artwork was copied or downloaded. The implementation instead uses general product-design principles commonly found across premium booking and SaaS interfaces: strong page hierarchy, restrained accent colour, visible state, compact mobile navigation, generous card rhythm, clear scan paths, and purposeful data density.

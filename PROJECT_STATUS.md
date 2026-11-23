@@ -13,6 +13,8 @@
 - Verified package.json manifests parse successfully.
 - Built all three applications successfully with Vite.
 - Started all three Vite development entry points and confirmed HTTP 200 responses.
+- Added shared visual tokens and premium customer, merchant, and deployment-specific CSS overrides.
+- Preserved existing inline application data and JavaScript interactions.
 
 ## Current structure
 
