@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Smart Barber — Admin sign in</title>
+    <style>
+      :root { font-family: system-ui, sans-serif; color: #182a31; background: #f5f7f5; }
+      body { min-height: 100vh; display: grid; place-items: center; margin: 0; }
+      main { width: min(420px, calc(100% - 32px)); padding: 32px; background: white; border: 1px solid #e3e9e6; border-radius: 18px; box-shadow: 0 20px 60px rgb(12 25 36 / 10%); }
+      h1 { margin: 0 0 8px; font-size: 28px; }
+      p { color: #78878b; }
+      label { display: grid; gap: 7px; margin-top: 18px; font-weight: 600; }
+      input, button { box-sizing: border-box; width: 100%; padding: 12px 14px; border: 1px solid #d3dfda; border-radius: 10px; font: inherit; }
+      button { margin-top: 22px; color: white; background: #007f78; border: 0; cursor: pointer; font-weight: 700; }
+      button:disabled { opacity: .65; cursor: wait; }
+      #message { min-height: 24px; margin-top: 16px; color: #bc504d; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Admin sign in</h1>
+      <p>Use an account that has the <code>platform_admin</code> role.</p>
+      <form id="login-form">
+        <label>Email<input name="email" type="email" autocomplete="username" required /></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required /></label>
+        <button type="submit">Sign in</button>
+      </form>
+      <div id="message" role="alert" aria-live="polite"></div>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.min.js"></script>
+    <script src="./supabase-config.js"></script>
+    <script>
+      const config = window.SMART_BARBER_CONFIG || {};
+      const message = document.querySelector("#message");
+      const form = document.querySelector("#login-form");
+      const client = config.supabaseUrl && config.supabasePublishableKey && window.supabase?.createClient
+        ? window.supabase.createClient(config.supabaseUrl, config.supabasePublishableKey)
+        : null;
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!client) { message.textContent = "Supabase configuration is missing."; return; }
+        const button = form.querySelector("button");
+        button.disabled = true;
+        message.textContent = "";
+        const values = new FormData(form);
+        const { data, error } = await client.auth.signInWithPassword({
+          email: String(values.get("email")),
+          password: String(values.get("password")),
+        });
+        if (error || !data.session) {
+          button.disabled = false;
+          message.textContent = "Sign-in failed. Check your credentials or contact an administrator.";
+          return;
+        }
+        const roles = await client.from("user_roles").select("role").eq("user_id", data.session.user.id).eq("active", true);
+        if (roles.error || !(roles.data || []).some((item) => item.role === "platform_admin")) {
+          await client.auth.signOut();
+          button.disabled = false;
+          message.textContent = "This account is not permitted to access the admin workspace.";
+          return;
+        }
+        window.location.href = "./smart-admin.html";
+      });
+    </script>
+  </body>
+</html>

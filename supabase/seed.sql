@@ -1,0 +1,2 @@
+-- Development seed data is intentionally omitted. Create an Auth user first,
+-- then grant platform_admin explicitly as described in supabase/README.md.
