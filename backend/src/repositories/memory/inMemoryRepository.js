@@ -150,6 +150,17 @@ export class InMemoryRepository extends RepositoryInterface {
   }
 
   async listAppointmentsByStaff(staffId) {
-    return clone(this.appointments.filter((x) => x.staffId === staffId));
+    const now = Date.now();
+    return clone(this.appointments.filter((appointment) =>
+      appointment.staffId === staffId
+      && (
+        [AppointmentStatus.CONFIRMED, AppointmentStatus.IN_PROGRESS].includes(appointment.status)
+        || (
+          appointment.status === AppointmentStatus.PENDING
+          && appointment.holdExpiresAt
+          && new Date(appointment.holdExpiresAt).getTime() > now
+        )
+      )
+    ));
   }
 }

@@ -3,6 +3,25 @@ import { RepositoryInterface } from "../interfaces/repositoryInterfaces.js";
 import { errors } from "../../domain/errors/domainErrors.js";
 import { createAppointment } from "../../domain/entities/entities.js";
 
+const APPOINTMENT_COLUMNS = [
+  "id",
+  "tenant_id",
+  "location_id",
+  "customer_profile_id",
+  "staff_id",
+  "service_id",
+  "start_at",
+  "end_at",
+  "price_snapshot_minor",
+  "duration_snapshot_minutes",
+  "currency_code",
+  "status",
+  "customer_notes",
+  "hold_expires_at",
+  "created_at",
+  "updated_at"
+].join(",");
+
 export class SupabaseRepository extends RepositoryInterface {
   constructor({ supabaseUrl, supabaseAnonKey, accessToken = null, clientFactory = null } = {}) {
     super();
@@ -201,7 +220,7 @@ export class SupabaseRepository extends RepositoryInterface {
 
   async listAppointmentsByCustomer(customerId, { limit = 50, offset = 0, accessToken = null } = {}) {
     const { data, error } = await this.client(accessToken).from("appointments")
-      .select("*").eq("customer_profile_id", customerId)
+      .select(APPOINTMENT_COLUMNS).eq("customer_profile_id", customerId)
       .order("start_at", { ascending: false }).range(offset, offset + limit - 1);
     this.translate(error);
     return (data || []).map((row) => this.mapAppointment(row));
@@ -209,21 +228,27 @@ export class SupabaseRepository extends RepositoryInterface {
 
   async listAppointmentsByTenant(tenantId, { limit = 50, offset = 0, accessToken = null } = {}) {
     const { data, error } = await this.client(accessToken).from("appointments")
-      .select("*").eq("tenant_id", tenantId)
+      .select(APPOINTMENT_COLUMNS).eq("tenant_id", tenantId)
       .order("start_at", { ascending: true }).range(offset, offset + limit - 1);
     this.translate(error);
     return (data || []).map((row) => this.mapAppointment(row));
   }
 
-  async listAppointmentsByStaff(staffId, { accessToken = null } = {}) {
-    const { data, error } = await this.client(accessToken).from("appointments")
-      .select("*").eq("staff_id", staffId);
+  async listAppointmentsByStaff(staffId, { date, accessToken = null } = {}) {
+    const { data, error } = await this.client(accessToken).rpc("public_staff_busy_intervals", {
+      p_staff_id: staffId,
+      p_local_date: date
+    });
     this.translate(error);
-    return (data || []).map((row) => this.mapAppointment(row));
+    return (data || []).map((row) => ({
+      startAt: row.start_at,
+      endAt: row.end_at
+    }));
   }
 
   async findAppointmentById(id, { accessToken = null } = {}) {
-    const { data, error } = await this.client(accessToken).from("appointments").select("*").eq("id", id).maybeSingle();
+    const { data, error } = await this.client(accessToken).from("appointments")
+      .select(APPOINTMENT_COLUMNS).eq("id", id).maybeSingle();
     this.translate(error);
     return this.mapAppointment(data);
   }
@@ -246,9 +271,10 @@ export class SupabaseRepository extends RepositoryInterface {
 
   async saveAppointment(appointment, { accessToken = null } = {}) {
     const status = appointment.status === "in-progress" ? "in_progress" : appointment.status === "no-show" ? "no_show" : appointment.status;
-    const { data, error } = await this.client(accessToken).from("appointments")
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq("id", appointment.id).select("*").maybeSingle();
+    const { data, error } = await this.client(accessToken).rpc("transition_appointment", {
+      p_appointment_id: appointment.id,
+      p_next_status: status
+    });
     if (error) this.translate(error);
     if (!data) throw errors.notFound("Appointment not found");
     return this.mapAppointment(data);

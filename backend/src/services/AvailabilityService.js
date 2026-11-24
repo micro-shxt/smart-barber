@@ -1,5 +1,4 @@
 import { errors } from "../domain/errors/domainErrors.js";
-import { AppointmentStatus } from "../domain/enums/appointmentStatus.js";
 import { appointmentsOverlap } from "../domain/rules/appointmentRules.js";
 import { localDateParts, minutesFromTime, strictDateKey, zonedDateTimeToIso } from "../utils/time.js";
 
@@ -37,7 +36,7 @@ export class AvailabilityService {
     const slots = [];
     let minutes = Math.max(minutesFromTime(hours.startTime), minutesFromTime(tenantHours.openTime));
     const endMinutes = Math.min(minutesFromTime(hours.endTime), minutesFromTime(tenantHours.closeTime));
-    const appointments = await this.repository.listAppointmentsByStaff(staffId);
+    const appointments = await this.repository.listAppointmentsByStaff(staffId, { date });
     const timeOff = await this.repository.listTimeOff(staffId);
     const now = Date.now();
     const { year, month, day: dateDay } = strictDateKey(date);
@@ -48,11 +47,9 @@ export class AvailabilityService {
       const serviceEnd = new Date(new Date(iso).getTime() + service.durationMinutes * 60000).toISOString();
       const busyEnd = new Date(new Date(iso).getTime() + (service.durationMinutes + service.bufferMinutes) * 60000).toISOString();
       const isPast = new Date(iso).getTime() <= now;
-      const busy = isPast || appointments.some((appointment) => {
-        if ([AppointmentStatus.CANCELLED, AppointmentStatus.DECLINED, AppointmentStatus.EXPIRED, AppointmentStatus.NO_SHOW].includes(appointment.status)) return false;
-        if (appointment.status === AppointmentStatus.PENDING && (!appointment.holdExpiresAt || new Date(appointment.holdExpiresAt).getTime() <= now)) return false;
-        return appointmentsOverlap(iso, busyEnd, appointment.startAt, appointment.endAt);
-      }) || timeOff.some((period) => appointmentsOverlap(iso, busyEnd, period.startAt, period.endAt));
+      const busy = isPast
+        || appointments.some((appointment) => appointmentsOverlap(iso, busyEnd, appointment.startAt, appointment.endAt))
+        || timeOff.some((period) => appointmentsOverlap(iso, busyEnd, period.startAt, period.endAt));
       if (!busy) slots.push({ startAt: iso, endAt: serviceEnd, durationMinutes: service.durationMinutes });
       minutes += 30;
     }
