@@ -1,1 +1,1 @@
-{"name":"@smart-barber/shared-utils","private":true,"version":"0.1.0","type":"module","dependencies":{"@supabase/supabase-js":"^2.119.2"}}
+{"name":"@smart-barber/shared-utils","private":true,"version":"0.1.0","type":"module","scripts":{"test":"node --test tests/*.test.js"},"dependencies":{"@supabase/supabase-js":"^2.119.2"}}
