@@ -29,7 +29,7 @@
       record_type: "business",
       plan: row.plan_code ? row.plan_code.charAt(0).toUpperCase() + row.plan_code.slice(1) : "",
       locations: row.locations_count || 1,
-      appointments: 0,
+      appointments: row.appointment_count || 0,
       saved: true,
     };
   }
@@ -37,7 +37,7 @@
   async function loadBusinesses() {
     const result = await client
       .from("businesses")
-      .select("id, name, category, city, contact_email, plan_code, status, notes, locations_count, created_at, updated_at")
+      .select("id, name, category, city, contact_email, plan_code, status, notes, locations_count, appointment_count, created_at, updated_at")
       .order("created_at", { ascending: false });
     if (result.error) return result;
     return { data: (result.data || []).map(toUiRecord), error: null };

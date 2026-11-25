@@ -33,3 +33,16 @@ Do not place a service-role/secret key in the browser. The admin page uses only 
 7. Add the deployed admin and login URLs to Supabase Auth's Site URL and redirect allow-list.
 
 The migration explicitly revokes anonymous table access, enables RLS on every public table, and records writes to the audit log through database triggers.
+
+The `seed_mockup_data` migration copies the first records from the dashboard mockup into the database: businesses, applications, subscriptions, licences, customers, appointments, support tickets, billing transactions, health checks, settings, and audit activity. It is safe to apply once through migrations and is written to avoid duplicating those records if the migration is re-run during local development.
+
+## Cloudflare Pages
+
+This repository is a static site, so configure the Pages project with:
+
+- Production branch: `main`
+- Build command: `exit 0`
+- Build output directory: `.`
+- Root directory: repository root
+
+The current project URL and publishable key are already configured in `admin/technicians/supabase-config.js`. Never put the service-role key there. The admin entry point will then be `/admin/technicians/login.html`.
