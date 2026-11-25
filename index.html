@@ -34,6 +34,9 @@
   </div>
   <div id="overlay-root"></div>
   <div id="toast-root" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.min.js"></script>
+  <script src="./admin/technicians/supabase-config.js"></script>
+  <script src="./customer-auth.js"></script>
   <script>
 const providers=[
  {id:"the-cut",name:"The Cut Collective",category:"Barbers",city:"Cape Town",area:"Sea Point",rating:4.9,reviews:128,distance:"2.1 km",next:"Today, 14:30",image:"https://images.pexels.com/photos/1813272/pexels-photo-1813272.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop",portfolio:["https://images.pexels.com/photos/1813272/pexels-photo-1813272.jpeg?auto=compress&cs=tinysrgb&w=400&h=320&fit=crop","https://images.pexels.com/photos/3993449/pexels-photo-3993449.jpeg?auto=compress&cs=tinysrgb&w=400&h=320&fit=crop","https://images.pexels.com/photos/1598375/pexels-photo-1598375.jpeg?auto=compress&cs=tinysrgb&w=400&h=320&fit=crop"],description:"A considered neighbourhood barbershop for sharp cuts, good conversation and an unhurried experience.",hours:"Mon–Fri 09:00–19:00 · Sat 09:00–17:00",team:["Thabo","Liam"],services:[["Signature cut",280,45,"A precise cut, wash and considered finish."],["Skin fade",320,45,"Clean detail from the first blend to the final line."],["Beard sculpt",180,30,"Shape, trim and finishing treatment."]],review:["The attention to detail was incredible.","My new regular spot. Easy to book and a great cut."]},
@@ -43,6 +46,7 @@ const providers=[
  {id:"strand",name:"Strand & Co.",category:"Hair salons",city:"Durban",area:"Umhlanga",rating:4.8,reviews:112,distance:"Nearby",next:"Friday, 11:00",image:"https://images.pexels.com/photos/3993323/pexels-photo-3993323.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop",portfolio:["https://images.pexels.com/photos/3993323/pexels-photo-3993323.jpeg?auto=compress&cs=tinysrgb&w=400&h=320&fit=crop","https://images.pexels.com/photos/1564828/pexels-photo-1564828.jpeg?auto=compress&cs=tinysrgb&w=400&h=320&fit=crop","https://images.pexels.com/photos/4022212/pexels-photo-4022212.jpeg?auto=compress&cs=tinysrgb&w=400&h=320&fit=crop"],description:"A relaxed coastal studio specialising in effortless, wearable hair.",hours:"Tue–Sat 09:00–18:00",team:["Priya","Zinhle"],services:[["Style cut",490,60,"A cut made for your hair and lifestyle."],["Blowout",320,45,"A fresh, polished finish."],["Gloss treatment",620,60,"Shine and softness, beautifully restored."]],review:["Beautiful salon and beautiful results.","I felt listened to from start to finish."]},
  {id:"atelier",name:"Atelier Nails",category:"Nails",city:"Pretoria",area:"Brooklyn",rating:4.7,reviews:63,distance:"Nearby",next:"Today, 15:00",image:"https://images.pexels.com/photos/939836/pexels-photo-939836.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop",portfolio:["https://images.pexels.com/photos/939836/pexels-photo-939836.jpeg?auto=compress&cs=tinysrgb&w=400&h=320&fit=crop","https://images.pexels.com/photos/3997386/pexels-photo-3997386.jpeg?auto=compress&cs=tinysrgb&w=400&h=320&fit=crop","https://images.pexels.com/photos/704815/pexels-photo-704815.jpeg?auto=compress&cs=tinysrgb&w=400&h=320&fit=crop"],description:"Quiet luxury for your hands and feet, with detail-led nail artistry.",hours:"Mon–Sat 09:00–18:00",team:["Noma","Chloe"],services:[["Classic manicure",250,45,"Care, shaping and a polished finish."],["Gel manicure",390,60,"Long-lasting colour with detailed prep."],["Spa pedicure",430,60,"A little more time for yourself."]],review:["The details are immaculate.","A lovely little escape."]}
 ];
+window.customerProviders=providers;
 const navItems=[["Home","house"],["Explore","compass"],["Bookings","calendar-days"],["Favourites","heart"],["Profile","user-round"]];
 const $=s=>document.querySelector(s), esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])),icon=n=>`<i data-lucide="${n}"></i>`,money=n=>"R"+Number(n).toLocaleString("en-ZA"),dateLabel=d=>new Date(d+"T12:00:00").toLocaleDateString("en-ZA",{weekday:"short",day:"numeric",month:"short"});
 let page="Home",selectedProvider=null,modal="",booking={},records=[],ready=false,busy=false,search="",category="All",city="Cape Town",maxPrice="All",minRating="All",availability="All",savedProviders=new Set(),savedServices=new Set(),ownedIds=new Set(),noticePrefs={reminders:true,updates:true,offers:false},recent=[];
@@ -82,5 +86,6 @@ $("#content").innerHTML='<div class="panel canva-panel">Finding beautiful places
 render();
 (async()=>{try{let r=await window.dataSdk.init({onDataChanged(data){records=data;render()}});if(!r.isOk)throw r.error;ready=true;render()}catch(e){toast("Booking requests are temporarily unavailable. You can still explore studios.",true);render()}})();
 </script>
+  <script src="./customer-workflow.js"></script>
  </body>
 </html>

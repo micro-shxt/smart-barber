@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Smart Barber Business</title>
+  <style>.app{visibility:hidden}</style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
@@ -54,6 +55,9 @@
   </div>
   <div id="overlay-root"></div>
   <div id="toast-root" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.min.js"></script>
+  <script src="../../admin/technicians/supabase-config.js"></script>
+  <script src="./business-auth.js"></script>
   <script>
 const tenants={"modern-cut":"The Modern Cut","olive-ivy":"Olive & Ivy Studio","district-fade":"District Fade Co."};
 const navItems=[["Overview","layout-dashboard"],["Appointments","calendar-days"],["Team","users"],["Services","scissors"],["Customers","heart-handshake"],["Financials","wallet"],["Marketing","megaphone"],["Settings","settings-2"]];
@@ -161,7 +165,7 @@ function editForm(type,id){let x=id?find(type,id):null;if(id&&!x){notify("Record
 function localDateTime(value){let d=new Date(value);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}T${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`}
 function overlaps(value,ignore){if(value.record_type!=="appointment"||!["Pending","Confirmed","In Progress"].includes(value.status))return false;let start=new Date(value.starts_at).getTime(),end=start+Number(value.duration)*60000;return records("appointment").some(a=>a.item_id!==ignore&&a.employee===value.employee&&a.city===value.city&&["Pending","Confirmed","In Progress"].includes(a.status)&&start<new Date(a.starts_at).getTime()+Number(a.duration)*60000&&end>new Date(a.starts_at).getTime())}
 function withinHours(value){if(value.record_type!=="appointment")return true;let employee=records("employee").find(e=>e.name===value.employee);if(!employee||employee.status==="Inactive")return false;let match=(employee.details||"").match(/(\d\d):(\d\d)\s*[–-]\s*(\d\d):(\d\d)/);if(!match)return true;let d=new Date(value.starts_at),minutes=d.getHours()*60+d.getMinutes();return minutes>=Number(match[1])*60+Number(match[2])&&minutes+Number(value.duration)<=Number(match[3])*60+Number(match[4])}
-async function saveRecord(value,existing,button){if(busy)return;if(!ready){notify("Workspace is still loading. Try again shortly.",true);return}if(!existing&&saved.length>=999){notify("The workspace has reached its 999-record limit.",true);return}busy=true;button.disabled=true;let old=button.innerHTML;button.textContent="Saving…";try{let result=existing?await window.dataSdk.update({...existing,...value}):await window.dataSdk.create(value);if(!result.isOk)throw result.error;$("#overlay-root").innerHTML="";render();notify("Changes saved to your workspace.")}catch(e){notify("Could not save. Please try again.",true);button.disabled=false;button.innerHTML=old}finally{busy=false}}
+async function saveRecord(value,existing,button){if(busy)return;if(!ready){notify("Workspace is still loading. Try again shortly.",true);return}busy=true;button.disabled=true;let old=button.innerHTML;button.textContent="Saving…";try{let result=existing?await window.dataSdk.update({...existing,...value}):await window.dataSdk.create(value);if(!result.isOk)throw result.error;$("#overlay-root").innerHTML="";render();notify("Changes saved to your workspace.")}catch(e){notify("Could not save. Please try again.",true);button.disabled=false;button.innerHTML=old}finally{busy=false}}
 function noticePanel(){let pending=appointmentsData().filter(a=>a.status==="Pending");drawer("Booking notifications",pending.length?pending.map(a=>`<div class="list-row"><div><strong>${esc(a.name)}</strong><small>${esc(a.service)} · ${dateText(a.starts_at)} at ${timeText(a.starts_at)}</small></div><button class="btn small secondary canva-button" data-detail="appointment:${esc(a.item_id)}">Review</button></div>`).join(""):empty("All caught up","There are no pending booking requests."))}
 document.addEventListener("click",async e=>{
  let n=e.target.closest("[data-nav]");if(n){setPage(n.dataset.nav);return}
@@ -184,5 +188,6 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){$("#overlay-root").
 $("#content").innerHTML='<div class="card canva-card">Loading business workspace…</div>';
 (async()=>{try{let result=await window.dataSdk.init({onDataChanged(data){saved=data;render()}});if(!result.isOk)throw result.error;ready=true;render()}catch(e){render();notify("Saved changes are unavailable. Sample views remain accessible.",true)}})();
 </script>
+  <script src="./business-workflow.js"></script>
  </body>
 </html>

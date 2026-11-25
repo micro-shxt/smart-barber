@@ -6,3 +6,6 @@
 
 /admin/*
   Cache-Control: no-store
+
+/company/my-dash/*
+  Cache-Control: no-store

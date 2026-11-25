@@ -30,9 +30,26 @@ Do not place a service-role/secret key in the browser. The admin page uses only 
 4. Deploy the function with `npx supabase functions deploy admin-api`.
 5. Set the function secret `ADMIN_ALLOWED_ORIGIN` to the exact Cloudflare Pages origin.
 6. Set the same project URL and publishable key in `admin/technicians/supabase-config.js`.
-7. Add the deployed admin and login URLs to Supabase Auth's Site URL and redirect allow-list.
+7. Set the deployed site root as Supabase Auth's Site URL and allow the customer root, business login, admin login, and any email-confirmation return URLs in the redirect allow-list.
 
 The migration explicitly revokes anonymous table access, enables RLS on every public table, and records writes to the audit log through database triggers.
+
+## Customer and business access
+
+`index.html` stays publicly browsable. Creating a customer account is available from its Profile screen; booking requests, profile writes, and appointment history require a Supabase email/password session. `customer_bookings` rows and customer profiles are restricted to the owning Auth user by RLS. A customer signup does not create a business membership or an admin role.
+
+`company/my-dash/home.html` redirects to `company/my-dash/login.html` unless the signed-in user has an active `business_memberships` row. Business accounts are not self-service: create their Auth user in Supabase, then provision their membership from the SQL editor. For example:
+
+```sql
+insert into public.business_memberships (business_id, user_id, role)
+values ('BUSINESS_UUID', 'AUTH_USER_UUID', 'Owner');
+```
+
+The `business_id` must identify an existing business and the user must already exist in Supabase Auth. Use `Manager`, `Stylist`, or `Receptionist` as appropriate. No browser signup path can insert memberships. The deployment dashboard continues to require the separately provisioned `platform_admin` role.
+
+The new customer history and membership indexes support indexed per-user and per-business lookups as account counts grow. This is database groundwork, not a claim that the current company dashboard is ready for 50,000 active businesses: its operational screens still contain prototype sample data and do not yet load those business tables from Supabase. Production-scale rollout requires replacing that prototype data adapter with paginated, business-scoped queries and evaluating the Supabase plan, connection/API limits, and observed traffic.
+
+Cloudflare Pages serves static HTML publicly. The page guards redirect unauthenticated visitors and hide the workspace UI, while Supabase RLS protects actual database rows; they cannot make the downloaded HTML source itself private. Do not embed confidential business data or secrets in the static pages. If the HTML route itself must return an HTTP denial before delivery, add a Cloudflare Pages Function/Worker that verifies a secure server-managed session cookie.
 
 The `seed_mockup_data` migration copies the first records from the dashboard mockup into the database: businesses, applications, subscriptions, licences, customers, appointments, support tickets, billing transactions, health checks, settings, and audit activity. It is safe to apply once through migrations and is written to avoid duplicating those records if the migration is re-run during local development.
 
