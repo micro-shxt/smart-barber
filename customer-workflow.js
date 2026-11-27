@@ -1,18 +1,18 @@
-// Replace the prototype's per-tab booking store with authenticated, per-user rows.
+// Keep the browser customer experience aligned with authenticated Supabase data.
 profile = function () {
   const currentUser = window.customerAuth.user;
   const account = currentUser
     ? '<section class="panel canva-panel"><h2>Your customer account</h2><p class="muted">' + esc(currentUser.email) + '</p><label class="field">Full name<input id="customer-profile-name" class="input" autocomplete="name" maxlength="160" value="' + esc(window.customerAuth.profile?.full_name || currentUser.user_metadata?.full_name || '') + '"></label><button class="btn secondary canva-button" data-action="customer-save-profile">Save profile</button><button class="text-btn canva-button" data-action="customer-signout">Sign out</button></section>'
     : '<section class="panel canva-panel"><h2>Welcome</h2><p class="muted">Explore studios without an account. Sign in or create a free customer account to manage your profile and appointments.</p><button class="btn canva-button" data-action="customer-signup">Create customer account</button><button class="text-btn canva-button" data-action="customer-signin">Sign in</button></section>';
-  return '<div class="eyebrow">YOUR SPACE</div><h1 class="page-title">A little more you.</h1><p class="muted">Your account and saved customer information.</p><div class="detail-columns"><div>' + account + '<section class="panel canva-panel" style="margin-top:18px"><h2>Preferences</h2><p class="muted">Preferred city: ' + esc(city) + '</p><p class="muted">Saved places: ' + savedProviders.size + '</p></section></div></div>';
+  return '<div class="eyebrow">YOUR SPACE</div><h1 class="page-title">Your account.</h1><p class="muted">Manage your profile and appointment preferences in your browser.</p><div class="detail-columns"><div>' + account + '<section class="panel canva-panel" style="margin-top:18px"><h2>Preferences</h2><p class="muted">Preferred city: ' + esc(city) + '</p><p class="muted">Saved places: ' + savedProviders.size + '</p></section></div></div>';
 };
 
 bookings = function () {
   if (!window.customerAuth.user) return '<div class="eyebrow">YOUR TIME</div><h1 class="page-title">My appointments.</h1><p class="muted">Sign in to view your private appointment history.</p><button class="btn canva-button" data-action="customer-signin">Sign in to continue</button>';
-  const mine = records.filter((row) => row.record_type === 'customer_booking');
-  return '<div class="eyebrow">YOUR TIME</div><h1 class="page-title">My appointments.</h1><p class="muted">Your private appointment history and requests.</p>' + (mine.length ? mine.map((row) => {
+  const mine = records.filter((row) => row.record_type === 'customer_booking').sort((a, b) => b.created_at.localeCompare(a.created_at));
+  return '<div class="eyebrow">YOUR TIME</div><h1 class="page-title">My appointments.</h1><p class="muted">Your appointment requests and their latest status.</p>' + (mine.length ? mine.map((row) => {
     const provider = window.customerProviders.find((item) => item.id === row.tenant_id);
-    return '<article class="panel canva-card" style="margin-bottom:14px"><div class="booking-row"><div><span class="status ' + (row.status === 'Cancelled' ? 'cancelled' : '') + '">' + esc(row.status) + '</span><h3 style="margin:12px 0 3px">' + esc(provider?.name || 'Studio') + ' · ' + esc(row.service) + '</h3><p class="muted" style="margin:0">' + esc(new Date(row.starts_at).toLocaleString('en-ZA')) + ' · ' + esc(row.employee) + ' · ' + money(row.amount) + '</p></div>' + (row.status !== 'Cancelled' ? '<button class="btn small ghost canva-button" data-cancel="' + esc(row.item_id) + '">Cancel</button>' : '') + '</div></article>';
+    return '<article class="panel canva-card" style="margin-bottom:14px"><div class="booking-row"><div><span class="status ' + (row.status === 'Cancelled' ? 'cancelled' : '') + '">' + esc(row.status) + '</span><h3 style="margin:12px 0 3px">' + esc(provider?.name || row.provider_name || 'Studio') + ' · ' + esc(row.service) + '</h3><p class="muted" style="margin:0">' + esc(new Intl.DateTimeFormat('en-ZA', { dateStyle: 'medium', timeStyle: 'short', timeZone: provider?.timezone || 'Africa/Johannesburg' }).format(new Date(row.starts_at))) + ' · ' + esc(row.employee) + ' · ' + money(row.amount) + '</p></div>' + (row.status === 'Pending' ? '<button class="btn small ghost canva-button" data-cancel="' + esc(row.item_id) + '">Cancel request</button>' : '') + '</div></article>';
   }).join('') : '<div class="empty canva-panel"><h3>No appointments yet</h3><p>Your requests will appear here after you sign in.</p></div>') + '<button class="btn secondary canva-button" data-nav="Explore" style="margin-top:20px">Find an appointment</button>';
 };
 
@@ -95,3 +95,5 @@ window.addEventListener('customer-auth-changed', async () => {
   ready = true;
   render();
 })();
+
+window.addEventListener("customer-directory-loaded", () => render());

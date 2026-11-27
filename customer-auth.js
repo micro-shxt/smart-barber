@@ -42,6 +42,7 @@
       tenant_id: row.provider_ref,
       name: user?.user_metadata?.full_name || "Customer",
       service: row.service_name,
+      provider_name: row.provider_name,
       employee: row.employee,
       starts_at: row.starts_at,
       duration: row.duration_minutes,
@@ -66,7 +67,30 @@
         if (profileError) throw profileError;
         profileData = savedProfile;
       } else profileData = null;
+      await this.loadDirectory();
       return user;
+    },
+    async loadDirectory() {
+      if (!client) throw new Error("Supabase is not configured.");
+      const { data, error } = await client.rpc("customer_public_directory");
+      if (error) throw error;
+      const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      const entries = (data || []).map((item) => {
+        const hours = (item.hours || []).filter((row) => !row.closed);
+        return {
+          id: item.id, slug: item.slug, name: item.name, category: item.category,
+          city: item.city, area: item.area, timezone: item.timezone,
+          rating: Number(item.rating), reviews: Number(item.reviews), distance: "Local studio",
+          next: item.is_demo ? "Demo listing" : "Choose a date to see available times",
+          image: item.image, portfolio: item.portfolio || [], description: item.description,
+          hours: hours.length ? hours.map((row) => `${dayNames[row.weekday - 1]} ${String(row.opens_at).slice(0, 5)}–${String(row.closes_at).slice(0, 5)}`).join(" · ") : "Hours not listed",
+          hoursData: item.hours || [], team: item.team || [], isDemo: item.is_demo,
+          services: (item.services || []).map((service) => [service.name, Number(service.price), Number(service.duration), service.description || "", service.id]),
+        };
+      });
+      window.customerProviders.splice(0, window.customerProviders.length, ...entries);
+      window.dispatchEvent(new CustomEvent("customer-directory-loaded"));
+      return entries;
     },
     open,
     async requireUser() {
@@ -84,26 +108,24 @@
       if (error) throw error;
       return (data || []).map(mapBooking);
     },
+    async getAvailableSlots({ providerId, serviceId, date, employee = "Any available" }) {
+      const { data, error } = await client.rpc("customer_available_slots", {
+        p_provider_id: providerId, p_service_id: serviceId, p_date: date, p_employee: employee,
+      });
+      if (error) throw error;
+      return data || [];
+    },
     async saveBooking(record) {
       if (!(await this.requireUser())) return null;
-      const provider = window.customerProviders?.find((item) => item.id === record.tenant_id);
-      const values = {
-        provider_ref: record.tenant_id,
-        provider_name: provider?.name || "Studio",
-        service_name: record.service,
-        starts_at: record.starts_at,
-        duration_minutes: record.duration,
-        employee: record.employee,
-        amount: record.amount,
-        status: record.status === "Cancelled" ? "Cancelled" : "Pending",
-        details: record.details || "",
-      };
-      const query = record.id
-        ? client.from("customer_bookings").update(values).eq("id", record.id)
-        : client.from("customer_bookings").insert({ ...values, user_id: user.id });
-      const { data, error } = await query.select("id, provider_ref, provider_name, service_name, starts_at, duration_minutes, employee, amount, status, details, created_at").single();
+      const { data, error } = await client.rpc("customer_create_booking", {
+        p_provider_id: record.tenant_id,
+        p_service_id: record.service_id,
+        p_starts_at: record.starts_at,
+        p_employee: record.employee || "Any available",
+      });
       if (error) throw error;
-      return mapBooking(data);
+      const saved = Array.isArray(data) ? data[0] : data;
+      return saved ? mapBooking(saved) : null;
     },
     async cancelBooking(id) {
       if (!(await this.requireUser())) return false;
